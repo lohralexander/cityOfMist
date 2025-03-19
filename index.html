@@ -233,7 +233,8 @@
         // 🔥 Import Firebase SDK
         import { initializeApp } from "https://www.gstatic.com/firebasejs/9.6.7/firebase-app.js";
         import { getAuth, GoogleAuthProvider, signInWithPopup, signOut } from "https://www.gstatic.com/firebasejs/9.6.7/firebase-auth.js";
-        import { getFirestore, doc, setDoc, getDoc } from "https://www.gstatic.com/firebasejs/9.6.7/firebase-firestore.js";
+        import { getFirestore, doc, setDoc, getDoc, onSnapshot } from "https://www.gstatic.com/firebasejs/9.6.7/firebase-firestore.js";
+
 
         // 🔥 Replace with your Firebase Config
         const firebaseConfig = {
@@ -257,8 +258,9 @@
             const result = await signInWithPopup(auth, provider);
             const user = result.user;
             document.getElementById('userName').innerText = `Welcome, ${user.displayName}`;
-            loadUserCards(user.uid);
+            subscribeToUserCards(user.uid);
         }
+
 
         // 🔹 Sign Out
         function logout() {
@@ -268,16 +270,26 @@
         }
 
         // 🔹 Load User Cards
-        async function loadUserCards(userId) {
+        function subscribeToUserCards(userId) {
             const docRef = doc(db, "users", userId);
-            const docSnap = await getDoc(docRef);
-            if (docSnap.exists()) {
-                const data = docSnap.data();
-                document.getElementById('cardsContainer').innerHTML = data.cardsHtml || "";
-            }
+            onSnapshot(docRef, (docSnap) => {
+                if (docSnap.exists()) {
+                    const data = docSnap.data();
+                    document.getElementById('cardsContainer').innerHTML = data.cardsHtml || "";
+                    // If needed, reinitialize any event listeners for the newly inserted DOM
+                }
+            });
         }
 
-        // 🔹 Save User Cards
+        function debounce(func, delay) {
+            let debounceTimer;
+            return function (...args) {
+                const context = this;
+                clearTimeout(debounceTimer);
+                debounceTimer = setTimeout(() => func.apply(context, args), delay);
+            };
+        }
+
         // 🔹 Save User Cards to Firestore
         async function saveUserCards(userId) {
             const cardsHtml = document.getElementById('cardsContainer').innerHTML;
@@ -288,6 +300,13 @@
                 console.error("❌ Error saving cards:", error);
             }
         }
+
+        // Create a debounced version of the save function with a 500ms delay
+        const debouncedSaveUserCards = debounce(() => {
+            if (auth.currentUser) {
+                saveUserCards(auth.currentUser.uid);
+            }
+        }, 500);
 
 
         // 🔹 Event Listeners
@@ -424,13 +443,13 @@
             cardWrapper.className = 'card-container';
             cardWrapper.dataset.cardId = cardId;
 
-            // Create Image Container
+            // Create Image Container (set to relative positioning)
             const trackingCardWrapper = document.createElement('div');
             trackingCardWrapper.className = 'tracking-card-wrapper';
 
             // Create Image
             const trackingCard = document.createElement('img');
-            trackingCard.src = "tracker.png";  // Change this to the correct image path
+            trackingCard.src = "tracker.png";  // Change to your actual image path
             trackingCard.alt = "City of Mist Tracking Card";
             trackingCard.className = 'tracking-card';
             trackingCard.dataset.cardId = cardId;
@@ -440,20 +459,20 @@
             tagInput.type = 'text';
             tagInput.className = 'tag-input';
             tagInput.placeholder = 'Enter TAG here';
-
-            // Move input field
+            // Style the input so its position is anchored to trackingCardWrapper
             tagInput.style.position = 'absolute';
             tagInput.style.left = '58%';
-            tagInput.style.top = '47%';
+            tagInput.style.top = '50%';
             tagInput.style.transform = 'translateX(-50%)';
             tagInput.style.background = 'rgba(255,255,255,0.8)';
             tagInput.style.padding = '6px 12px';
             tagInput.style.borderRadius = '6px';
             tagInput.style.width = '38%';
 
-            // Append to wrapper so it stays with the image
+            // Append tagInput to trackingCardWrapper (only once)
             trackingCardWrapper.appendChild(tagInput);
-
+            // Append the image after the input, if you want the image to be underneath
+            trackingCardWrapper.appendChild(trackingCard);
 
             // Store card data
             const cardData = {
@@ -463,10 +482,11 @@
             };
             cards.push(cardData);
 
-            // Update tag name on input
+            // Update tag name on input and trigger debounced save
             tagInput.addEventListener('input', function () {
                 cardData.tagName = this.value;
                 updateCardsList();
+                debouncedSaveUserCards();  // Trigger a debounced save after input.
             });
 
             // Create actions container
@@ -479,7 +499,10 @@
             removeButton.className = "remove-button";
             removeButton.onclick = () => removeCard(cardWrapper, cardId);
 
-            // Click on predefined positions to toggle markers
+            // Attach the remove button
+            actionsDiv.appendChild(removeButton);
+
+            // Set up marker toggling on the wrapper (or image)
             trackingCardWrapper.addEventListener('click', function (event) {
                 const rect = trackingCard.getBoundingClientRect();
                 const x = event.clientX - rect.left;
@@ -498,7 +521,6 @@
                         Math.pow(xPercent - pos.xPercent, 2) +
                         Math.pow(yPercent - pos.yPercent, 2)
                     );
-
                     if (distance < closestDistance) {
                         closestDistance = distance;
                         closestIndex = index;
@@ -509,24 +531,22 @@
                 if (closestIndex !== -1) {
                     cardData.markedFields[closestIndex] = !cardData.markedFields[closestIndex];
                     createMarkers(trackingCardWrapper, cardData.markedFields);
+                    debouncedSaveUserCards(); // Optionally trigger a save when markers change
                 }
             });
 
-            // Append elements
-            trackingCardWrapper.appendChild(trackingCard);
-            actionsDiv.appendChild(removeButton);
-
+            // Append elements to the card container
             cardWrapper.appendChild(trackingCardWrapper);
-            cardWrapper.appendChild(tagInput);
             cardWrapper.appendChild(actionsDiv);
             cardsContainer.appendChild(cardWrapper);
 
             // Draw initial markers (none will be visible at start)
             createMarkers(trackingCardWrapper, cardData.markedFields);
 
-            // Update the side menu
+            // Update the side menu list
             updateCardsList();
         }
+
 
         function createMarkers(cardWrapper, markedFields) {
             // Remove previous markers
