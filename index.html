@@ -278,10 +278,17 @@
         }
 
         // 🔹 Save User Cards
+        // 🔹 Save User Cards to Firestore
         async function saveUserCards(userId) {
             const cardsHtml = document.getElementById('cardsContainer').innerHTML;
-            await setDoc(doc(db, "users", userId), { cardsHtml });
+            try {
+                await setDoc(doc(db, "users", userId), { cardsHtml });
+                console.log("✅ Cards saved successfully!");
+            } catch (error) {
+                console.error("❌ Error saving cards:", error);
+            }
         }
+
 
         // 🔹 Event Listeners
         document.getElementById('loginBtn').addEventListener('click', login);
@@ -569,6 +576,7 @@
     </script>
     <button id="loginBtn">Sign in with Google</button>
     <button id="logoutBtn">Sign Out</button>
-    <p id="userName"></p>    
+    <p id="userName"></p>
 </body>
+
 </html>
