@@ -1,0 +1,504 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>City of Mist Tracking Cards</title>
+    <style>
+        :root {
+            --primary-color: #3b82f6;
+            --danger-color: #ef4444;
+            --bg-color: #f3f4f6;
+            --card-bg: #ffffff;
+            --text-color: #1f2937;
+            --shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.1), 0 2px 4px -1px rgba(0, 0, 0, 0.06);
+        }
+
+        body {
+            margin: 0;
+            padding: 20px;
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            background-color: var(--bg-color);
+            color: var(--text-color);
+        }
+
+        .container {
+            max-width: 1200px;
+            margin: 0 auto;
+            padding: 0 16px;
+        }
+
+        header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 24px;
+        }
+
+        h1 {
+            margin: 0;
+            font-size: 1.75rem;
+        }
+
+        .card-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fill, minmax(300px, 1fr));
+            gap: 24px;
+        }
+
+        .card-container {
+            position: relative;
+            border: 1px solid #e5e7eb;
+            padding: 16px;
+            background: var(--card-bg);
+            border-radius: 8px;
+            box-shadow: var(--shadow);
+            transition: transform 0.2s, box-shadow 0.2s;
+        }
+
+        .card-container:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 10px 15px -3px rgba(0, 0, 0, 0.1), 0 4px 6px -2px rgba(0, 0, 0, 0.05);
+        }
+
+        .tracking-card-wrapper {
+            position: relative;
+            width: 100%;
+        }
+
+        .tracking-card {
+            display: block;
+            width: 100%;
+            height: auto;
+        }
+
+        .field-marker {
+            position: absolute;
+            width: 12px;
+            height: 12px;
+            background-color: rgba(166,81,55,1);
+            border-radius: 50%;
+            opacity: 0.9;
+            transform: translate(-50%, -50%);
+            cursor: pointer;
+            transition: transform 0.1s, background-color 0.2s;
+        }
+
+        .field-marker:hover {
+            transform: translate(-50%, -50%) scale(1.2);
+            background-color: rgba(166,81,55,1);
+        }
+
+        .tag-input {
+            width: 80%;
+            margin-top: 12px;
+            background: var(--card-bg);
+            border: 1px solid #e5e7eb;
+            border-radius: 4px;
+            font-size: 16px;
+            padding: 8px 12px;
+            transition: border-color 0.2s;
+        }
+
+        .tag-input:focus {
+            outline: none;
+            border-color: var(--primary-color);
+            box-shadow: 0 0 0 3px rgba(59, 130, 246, 0.2);
+        }
+
+        .card-actions {
+            display: flex;
+            justify-content: flex-end;
+            margin-top: 12px;
+        }
+
+        button {
+            border: none;
+            padding: 8px 16px;
+            cursor: pointer;
+            border-radius: 4px;
+            font-weight: 500;
+            transition: background-color 0.2s, transform 0.1s;
+        }
+
+        button:active {
+            transform: translateY(1px);
+        }
+
+        .remove-button {
+            background-color: var(--danger-color);
+            color: white;
+        }
+
+        .remove-button:hover {
+            background-color: #dc2626;
+        }
+
+        .add-button {
+            background-color: var(--primary-color);
+            color: white;
+            display: flex;
+            align-items: center;
+            gap: 8px;
+        }
+
+        .add-button:hover {
+            background-color: #2563eb;
+        }
+
+        .add-button svg {
+            width: 16px;
+            height: 16px;
+        }
+
+        /* Sidebar menu */
+        .menu-container {
+            position: fixed;
+            top: 0;
+            left: -300px;
+            width: 300px;
+            height: 100%;
+            background-color: var(--card-bg);
+            box-shadow: var(--shadow);
+            transition: left 0.3s ease;
+            z-index: 1000;
+            overflow-y: auto;
+        }
+
+        .menu-container.open {
+            left: 0;
+        }
+
+        .menu-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            padding: 16px;
+            border-bottom: 1px solid #e5e7eb;
+        }
+
+        .menu-list {
+            list-style: none;
+            padding: 0;
+            margin: 0;
+        }
+
+        .menu-item {
+            padding: 12px 16px;
+            border-bottom: 1px solid #f3f4f6;
+            cursor: pointer;
+            transition: background-color 0.2s;
+        }
+
+        .menu-item:hover {
+            background-color: #f9fafb;
+        }
+
+        .menu-toggle {
+            background: none;
+            border: none;
+            cursor: pointer;
+            display: flex;
+            flex-direction: column;
+            gap: 5px;
+            padding: 8px;
+        }
+
+        .menu-toggle span {
+            display: block;
+            width: 24px;
+            height: 3px;
+            background-color: var(--text-color);
+            border-radius: 3px;
+            transition: transform 0.2s;
+        }
+
+        .backdrop {
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            background-color: rgba(0, 0, 0, 0.5);
+            z-index: 999;
+            display: none;
+        }
+
+        .backdrop.open {
+            display: block;
+        }
+    </style>
+</head>
+
+<body>
+    <!-- Side Menu -->
+    <div class="menu-container" id="sideMenu">
+        <div class="menu-header">
+            <h2>Cards</h2>
+            <button id="closeMenu" class="menu-toggle">
+                <span></span>
+                <span></span>
+            </button>
+        </div>
+        <ul class="menu-list" id="cardsList">
+            <!-- Card list items will be added here -->
+        </ul>
+    </div>
+    <div class="backdrop" id="menuBackdrop"></div>
+
+    <div class="container">
+        <header>
+            <h1>City of Mist Tracking Cards</h1>
+            <button id="openMenu" class="menu-toggle">
+                <span></span>
+                <span></span>
+                <span></span>
+            </button>
+        </header>
+
+        <button id="addCard" class="add-button">
+            <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 20 20" fill="currentColor">
+                <path fill-rule="evenodd" d="M10 3a1 1 0 011 1v5h5a1 1 0 110 2h-5v5a1 1 0 11-2 0v-5H4a1 1 0 110-2h5V4a1 1 0 011-1z" clip-rule="evenodd" />
+            </svg>
+            Add Card
+        </button>
+
+        <div id="cardsContainer" class="card-grid"></div>
+    </div>
+
+    <script>
+        const cardsContainer = document.getElementById('cardsContainer');
+        const addCardButton = document.getElementById('addCard');
+        const cardsList = document.getElementById('cardsList');
+        const sideMenu = document.getElementById('sideMenu');
+        const openMenuBtn = document.getElementById('openMenu');
+        const closeMenuBtn = document.getElementById('closeMenu');
+        const menuBackdrop = document.getElementById('menuBackdrop');
+
+        let cardCount = 0;
+        let cards = [];
+
+        // Define positions as percentages of the image width and height
+        const allowedMarkerPositions = [
+            { xPercent: 22.0, yPercent: 44 }, { xPercent: 29.0, yPercent: 44 },
+            { xPercent: 33.0, yPercent: 44 }, { xPercent: 37.0, yPercent: 44 },
+            { xPercent: 42.0, yPercent: 44 }, { xPercent: 45.0, yPercent: 44 },
+            { xPercent: 49.5, yPercent: 44 }, { xPercent: 54.0, yPercent: 44 },
+            { xPercent: 57.0, yPercent: 44 }, { xPercent: 60.0, yPercent: 44 },
+            { xPercent: 64.0, yPercent: 44 }, { xPercent: 84.6, yPercent: 44 },
+            { xPercent: 87.7, yPercent: 44 }, { xPercent: 91.5, yPercent: 44 },
+            { xPercent: 94.6, yPercent: 44 }, { xPercent: 100.0, yPercent: 44 }
+        ];
+
+        // Menu handlers
+        openMenuBtn.addEventListener('click', () => {
+            sideMenu.classList.add('open');
+            menuBackdrop.classList.add('open');
+        });
+
+        function closeMenu() {
+            sideMenu.classList.remove('open');
+            menuBackdrop.classList.remove('open');
+        }
+
+        closeMenuBtn.addEventListener('click', closeMenu);
+        menuBackdrop.addEventListener('click', closeMenu);
+
+        function updateCardsList() {
+            // Clear current list
+            cardsList.innerHTML = '';
+            
+            // Sort cards by tag name
+            cards.sort((a, b) => {
+                const tagA = a.tagName.toLowerCase();
+                const tagB = b.tagName.toLowerCase();
+                return tagA.localeCompare(tagB);
+            });
+            
+            // Add items to the menu
+            cards.forEach(card => {
+                const listItem = document.createElement('li');
+                listItem.className = 'menu-item';
+                listItem.textContent = card.tagName || 'Unnamed Card';
+                listItem.dataset.cardId = card.id;
+                
+                // Scroll to the card when clicked
+                listItem.addEventListener('click', () => {
+                    const targetCard = document.querySelector(`.card-container[data-card-id="${card.id}"]`);
+                    if (targetCard) {
+                        targetCard.scrollIntoView({ behavior: 'smooth', block: 'center' });
+                        targetCard.style.outline = '2px solid var(--primary-color)';
+                        setTimeout(() => {
+                            targetCard.style.outline = 'none';
+                        }, 1500);
+                    }
+                    closeMenu();
+                });
+                
+                cardsList.appendChild(listItem);
+            });
+        }
+
+        function createCard() {
+            cardCount++;
+            const cardId = cardCount;
+
+            // Create Card Wrapper
+            const cardWrapper = document.createElement('div');
+            cardWrapper.className = 'card-container';
+            cardWrapper.dataset.cardId = cardId;
+
+            // Create Image Container
+            const trackingCardWrapper = document.createElement('div');
+            trackingCardWrapper.className = 'tracking-card-wrapper';
+            
+            // Create Image
+            const trackingCard = document.createElement('img');
+            trackingCard.src = "tracker.png";  // Change this to the correct image path
+            trackingCard.alt = "City of Mist Tracking Card";
+            trackingCard.className = 'tracking-card';
+            trackingCard.dataset.cardId = cardId;
+
+            // Create Input Field for TAGS
+            const tagInput = document.createElement('input');
+            tagInput.type = 'text';
+            tagInput.className = 'tag-input';
+            tagInput.placeholder = 'Enter TAG here';
+
+            // Move input field
+            tagInput.style.position = 'absolute';
+            tagInput.style.left = '58%';
+            tagInput.style.top = '47%';
+            tagInput.style.transform = 'translateX(-50%)';
+            tagInput.style.background = 'rgba(255,255,255,0.8)';
+            tagInput.style.padding = '6px 12px';
+            tagInput.style.borderRadius = '6px';
+            tagInput.style.width = '38%';
+
+            // Append to wrapper so it stays with the image
+            trackingCardWrapper.appendChild(tagInput);
+
+            
+            // Store card data
+            const cardData = {
+                id: cardId,
+                tagName: '',
+                markedFields: Array(allowedMarkerPositions.length).fill(false)
+            };
+            cards.push(cardData);
+
+            // Update tag name on input
+            tagInput.addEventListener('input', function() {
+                cardData.tagName = this.value;
+                updateCardsList();
+            });
+
+            // Create actions container
+            const actionsDiv = document.createElement('div');
+            actionsDiv.className = 'card-actions';
+
+            // Create Remove Button
+            const removeButton = document.createElement('button');
+            removeButton.textContent = "Remove";
+            removeButton.className = "remove-button";
+            removeButton.onclick = () => removeCard(cardWrapper, cardId);
+
+            // Click on predefined positions to toggle markers
+            trackingCardWrapper.addEventListener('click', function (event) {
+                const rect = trackingCard.getBoundingClientRect();
+                const x = event.clientX - rect.left;
+                const y = event.clientY - rect.top;
+                
+                // Convert to percentages
+                const xPercent = (x / rect.width) * 100;
+                const yPercent = (y / rect.height) * 100;
+
+                // Find the closest predefined marker position
+                let closestIndex = -1;
+                let closestDistance = 5; // Max clickable radius in percentage
+
+                allowedMarkerPositions.forEach((pos, index) => {
+                    const distance = Math.sqrt(
+                        Math.pow(xPercent - pos.xPercent, 2) + 
+                        Math.pow(yPercent - pos.yPercent, 2)
+                    );
+                    
+                    if (distance < closestDistance) {
+                        closestDistance = distance;
+                        closestIndex = index;
+                    }
+                });
+
+                // Toggle marker at the found position
+                if (closestIndex !== -1) {
+                    cardData.markedFields[closestIndex] = !cardData.markedFields[closestIndex];
+                    createMarkers(trackingCardWrapper, cardData.markedFields);
+                }
+            });
+
+            // Append elements
+            trackingCardWrapper.appendChild(trackingCard);
+            actionsDiv.appendChild(removeButton);
+            
+            cardWrapper.appendChild(trackingCardWrapper);
+            cardWrapper.appendChild(tagInput);
+            cardWrapper.appendChild(actionsDiv);
+            cardsContainer.appendChild(cardWrapper);
+
+            // Draw initial markers (none will be visible at start)
+            createMarkers(trackingCardWrapper, cardData.markedFields);
+            
+            // Update the side menu
+            updateCardsList();
+        }
+
+        function createMarkers(cardWrapper, markedFields) {
+            // Remove previous markers
+            cardWrapper.querySelectorAll('.field-marker').forEach(marker => marker.remove());
+
+            // Get the card image
+            const cardImage = cardWrapper.querySelector('.tracking-card');
+            
+            // Add markers only at allowed positions where they are toggled on
+            markedFields.forEach((isMarked, index) => {
+                if (isMarked) {
+                    const markerElement = document.createElement('div');
+                    markerElement.className = 'field-marker';
+                    
+                    // Position using percentages
+                    markerElement.style.left = `${allowedMarkerPositions[index].xPercent}%`;
+                    markerElement.style.top = `${allowedMarkerPositions[index].yPercent}%`;
+
+                    // Click to remove marker
+                    markerElement.onclick = (event) => {
+                        event.stopPropagation();
+                        markedFields[index] = false;
+                        createMarkers(cardWrapper, markedFields);
+                    };
+
+                    cardWrapper.appendChild(markerElement);
+                }
+            });
+        }
+
+        function removeCard(cardWrapper, cardId) {
+            // Remove from DOM
+            cardWrapper.remove();
+            
+            // Remove from cards array
+            const index = cards.findIndex(card => card.id === cardId);
+            if (index !== -1) {
+                cards.splice(index, 1);
+                updateCardsList();
+            }
+        }
+
+        addCardButton.addEventListener('click', createCard);
+
+        // Add the first card on page load
+        createCard();
+    </script>
+</body>
+
+</html>
