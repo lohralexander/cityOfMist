@@ -276,10 +276,23 @@
                 if (docSnap.exists()) {
                     const data = docSnap.data();
                     if (data.cards) {
-                        // Update the local state and re-render the UI
+                        console.log("Received cards data from Firebase:", data.cards);
+
+                        // Update the local state
                         cards = data.cards;
-                        renderCards(); // This function re-builds the cardsContainer and side menu.
+
+                        // Render cards from the updated data
+                        renderCards();
+
+                        // Log success
+                        console.log("Cards loaded and rendered from Firebase");
+                    } else {
+                        console.log("No cards found in user document");
                     }
+                } else {
+                    console.log("User document doesn't exist yet");
+                    // Create it with an empty cards array
+                    setDoc(docRef, { cards: [] });
                 }
             });
         }
@@ -315,7 +328,7 @@
                 tagInput.placeholder = 'Enter TAG here';
                 tagInput.style.position = 'absolute';
                 tagInput.style.left = '58%';
-                tagInput.style.top = '47%';
+                tagInput.style.top = '50%';
                 tagInput.style.transform = 'translateX(-50%)';
                 tagInput.style.background = 'rgba(255,255,255,0.8)';
                 tagInput.style.padding = '6px 12px';
@@ -328,6 +341,58 @@
                     cardData.tagName = this.value;
                     updateCardsList(); // Update side menu if needed
                     debouncedSaveUserCards();
+                });
+
+                trackingCard.addEventListener('click', function(event) {
+                    const rect = this.getBoundingClientRect();
+                    const x = event.clientX - rect.left;
+                    const y = event.clientY - rect.top;
+
+                    // Get card ID from the clicked element
+                    const cardId = this.dataset.cardId;
+
+                    // Find the card data in our array
+                    const cardData = cards.find(card => String(card.id) === String(cardId));
+                    if (!cardData) {
+                        console.error("Card click: Card data not found for ID", cardId);
+                        return;
+                    }
+
+                    // Convert to percentages
+                    const xPercent = (x / rect.width) * 100;
+                    const yPercent = (y / rect.height) * 100;
+
+                    // Find the closest predefined marker position
+                    let closestIndex = -1;
+                    let closestDistance = 5; // Max clickable radius in percentage
+
+                    allowedMarkerPositions.forEach((pos, index) => {
+                        const distance = Math.sqrt(
+                            Math.pow(xPercent - pos.xPercent, 2) +
+                            Math.pow(yPercent - pos.yPercent, 2)
+                        );
+                        if (distance < closestDistance) {
+                            closestDistance = distance;
+                            closestIndex = index;
+                        }
+                    });
+
+                    // Toggle marker at the found position
+                    if (closestIndex !== -1) {
+                        console.log(`Toggling marker ${closestIndex} on card ${cardId}`);
+                        cardData.markedFields[closestIndex] = !cardData.markedFields[closestIndex];
+
+                        // Get the card wrapper (parent of the image)
+                        const wrapper = this.closest('.tracking-card-wrapper');
+                        if (wrapper) {
+                            createMarkers(wrapper, cardData.markedFields);
+
+                            // Save changes if logged in
+                            if (auth.currentUser) {
+                                debouncedSaveUserCards();
+                            }
+                        }
+                    }
                 });
 
                 // Append elements in proper order
