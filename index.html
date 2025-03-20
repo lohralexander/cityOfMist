@@ -275,11 +275,104 @@
             onSnapshot(docRef, (docSnap) => {
                 if (docSnap.exists()) {
                     const data = docSnap.data();
-                    document.getElementById('cardsContainer').innerHTML = data.cardsHtml || "";
-                    // If needed, reinitialize any event listeners for the newly inserted DOM
+                    if (data.cards) {
+                        // Update the local state and re-render the UI
+                        cards = data.cards;
+                        renderCards(); // This function re-builds the cardsContainer and side menu.
+                    }
                 }
             });
         }
+
+        function renderCards() {
+            // Clear the container
+            cardsContainer.innerHTML = '';
+
+            // Clear the side menu
+            cardsList.innerHTML = '';
+
+            // Rebuild each card from the 'cards' JSON array
+            cards.forEach(cardData => {
+                // Create card container and its elements using cardData values
+                const cardWrapper = document.createElement('div');
+                cardWrapper.className = 'card-container';
+                cardWrapper.dataset.cardId = cardData.id;
+
+                // Create tracking card wrapper, image, tag input, etc.
+                const trackingCardWrapper = document.createElement('div');
+                trackingCardWrapper.className = 'tracking-card-wrapper';
+
+                const trackingCard = document.createElement('img');
+                trackingCard.src = "tracker.png";
+                trackingCard.alt = "City of Mist Tracking Card";
+                trackingCard.className = 'tracking-card';
+                trackingCard.dataset.cardId = cardData.id;
+
+                // Create tag input
+                const tagInput = document.createElement('input');
+                tagInput.type = 'text';
+                tagInput.className = 'tag-input';
+                tagInput.placeholder = 'Enter TAG here';
+                tagInput.style.position = 'absolute';
+                tagInput.style.left = '58%';
+                tagInput.style.top = '47%';
+                tagInput.style.transform = 'translateX(-50%)';
+                tagInput.style.background = 'rgba(255,255,255,0.8)';
+                tagInput.style.padding = '6px 12px';
+                tagInput.style.borderRadius = '6px';
+                tagInput.style.width = '38%';
+                tagInput.value = cardData.tagName;
+
+                // Bind tag input event listener
+                tagInput.addEventListener('input', function () {
+                    cardData.tagName = this.value;
+                    updateCardsList(); // Update side menu if needed
+                    debouncedSaveUserCards();
+                });
+
+                // Append elements in proper order
+                trackingCardWrapper.appendChild(trackingCard);
+                trackingCardWrapper.appendChild(tagInput);
+
+                // Create and bind remove button
+                const actionsDiv = document.createElement('div');
+                actionsDiv.className = 'card-actions';
+                const removeButton = document.createElement('button');
+                removeButton.textContent = "Remove";
+                removeButton.className = "remove-button";
+                removeButton.onclick = function(e) {
+                    e.stopPropagation(); // Stop event bubbling
+                    removeCardDirect(this); // 'this' refers to the button
+                };
+                actionsDiv.appendChild(removeButton);
+
+                cardWrapper.appendChild(trackingCardWrapper);
+                cardWrapper.appendChild(actionsDiv);
+                cardsContainer.appendChild(cardWrapper);
+
+                // Render markers based on cardData.markedFields
+                createMarkers(trackingCardWrapper, cardData.markedFields);
+
+                // Also update the side menu for each card
+                const listItem = document.createElement('li');
+                listItem.className = 'menu-item';
+                listItem.textContent = cardData.tagName || 'Unnamed Card';
+                listItem.dataset.cardId = cardData.id;
+                listItem.addEventListener('click', () => {
+                    const targetCard = document.querySelector(`.card-container[data-card-id="${cardData.id}"]`);
+                    if (targetCard) {
+                        targetCard.scrollIntoView({ behavior: 'smooth', block: 'center' });
+                        targetCard.style.outline = '2px solid var(--primary-color)';
+                        setTimeout(() => {
+                            targetCard.style.outline = 'none';
+                        }, 1500);
+                    }
+                    closeMenu();
+                });
+                cardsList.appendChild(listItem);
+            });
+        }
+
 
         function debounce(func, delay) {
             let debounceTimer;
@@ -292,9 +385,8 @@
 
         // 🔹 Save User Cards to Firestore
         async function saveUserCards(userId) {
-            const cardsHtml = document.getElementById('cardsContainer').innerHTML;
             try {
-                await setDoc(doc(db, "users", userId), { cardsHtml });
+                await setDoc(doc(db, "users", userId), { cards });
                 console.log("✅ Cards saved successfully!");
             } catch (error) {
                 console.error("❌ Error saving cards:", error);
@@ -385,7 +477,7 @@
             { xPercent: 94.6, yPercent: 44 }, { xPercent: 100.0, yPercent: 44 }
         ];
 
-        // Menu handlers
+        // Menu handlersW
         openMenuBtn.addEventListener('click', () => {
             sideMenu.classList.add('open');
             menuBackdrop.classList.add('open');
@@ -405,8 +497,8 @@
 
             // Sort cards by tag name
             cards.sort((a, b) => {
-                const tagA = a.tagName.toLowerCase();
-                const tagB = b.tagName.toLowerCase();
+                const tagA = (a.tagName || '').toLowerCase();
+                const tagB = (b.tagName || '').toLowerCase();
                 return tagA.localeCompare(tagB);
             });
 
@@ -436,7 +528,8 @@
 
         function createCard() {
             cardCount++;
-            const cardId = cardCount;
+            const cardId = Date.now(); // Use timestamp for unique ID
+            console.log("Creating new card with ID:", cardId);
 
             // Create Card Wrapper
             const cardWrapper = document.createElement('div');
@@ -459,7 +552,7 @@
             tagInput.type = 'text';
             tagInput.className = 'tag-input';
             tagInput.placeholder = 'Enter TAG here';
-            // Style the input so its position is anchored to trackingCardWrapper
+            // Style the input
             tagInput.style.position = 'absolute';
             tagInput.style.left = '58%';
             tagInput.style.top = '50%';
@@ -469,10 +562,10 @@
             tagInput.style.borderRadius = '6px';
             tagInput.style.width = '38%';
 
-            // Append tagInput to trackingCardWrapper (only once)
-            trackingCardWrapper.appendChild(tagInput);
-            // Append the image after the input, if you want the image to be underneath
+            // Append the image first (input will be on top)
             trackingCardWrapper.appendChild(trackingCard);
+            // Append input after the image
+            trackingCardWrapper.appendChild(tagInput);
 
             // Store card data
             const cardData = {
@@ -482,26 +575,46 @@
             };
             cards.push(cardData);
 
-            // Update tag name on input and trigger debounced save
-            tagInput.addEventListener('input', function () {
+            // Update tag name on input
+            tagInput.addEventListener('input', function() {
                 cardData.tagName = this.value;
                 updateCardsList();
-                debouncedSaveUserCards();  // Trigger a debounced save after input.
+                if (auth.currentUser) {
+                    debouncedSaveUserCards();
+                }
             });
 
             // Create actions container
             const actionsDiv = document.createElement('div');
             actionsDiv.className = 'card-actions';
 
-            // Create Remove Button
+            // Create Remove Button with direct removal approach
             const removeButton = document.createElement('button');
             removeButton.textContent = "Remove";
             removeButton.className = "remove-button";
-            removeButton.onclick = () => removeCard(cardWrapper, cardId);
+            removeButton.addEventListener('click', function(e) {
+                e.preventDefault();
+                e.stopPropagation();
+                console.log("Remove button clicked for card:", cardId);
+
+                // Direct removal approach
+                cardWrapper.remove();
+
+                // Also remove from array
+                const index = cards.findIndex(c => c.id === cardId);
+                if (index !== -1) {
+                    cards.splice(index, 1);
+                    updateCardsList();
+
+                    // Save if authenticated
+                    if (auth.currentUser) {
+                        saveUserCards(auth.currentUser.uid);
+                    }
+                }
+            });
 
             // Attach the remove button
             actionsDiv.appendChild(removeButton);
-
             // Set up marker toggling on the wrapper (or image)
             trackingCardWrapper.addEventListener('click', function (event) {
                 const rect = trackingCard.getBoundingClientRect();
@@ -540,22 +653,40 @@
             cardWrapper.appendChild(actionsDiv);
             cardsContainer.appendChild(cardWrapper);
 
-            // Draw initial markers (none will be visible at start)
+            // Draw initial markers
             createMarkers(trackingCardWrapper, cardData.markedFields);
 
             // Update the side menu list
             updateCardsList();
+
+            console.log("Card created with ID:", cardId);
+            return cardId;
         }
 
 
+        // Modify the createMarkers function to ensure proper event handling
         function createMarkers(cardWrapper, markedFields) {
             // Remove previous markers
             cardWrapper.querySelectorAll('.field-marker').forEach(marker => marker.remove());
 
-            // Get the card image
+            // Get the card image for reference (not needed for positioning)
             const cardImage = cardWrapper.querySelector('.tracking-card');
 
-            // Add markers only at allowed positions where they are toggled on
+            // Get card ID - needed to update the right card in the array
+            const cardId = cardImage ? cardImage.dataset.cardId : null;
+            if (!cardId) {
+                console.error("Cannot create markers: Card ID not found");
+                return;
+            }
+
+            // Find the card data in our array
+            const cardData = cards.find(card => String(card.id) === String(cardId));
+            if (!cardData) {
+                console.error("Cannot create markers: Card data not found for ID", cardId);
+                return;
+            }
+
+            // Add markers at allowed positions where they are toggled on
             markedFields.forEach((isMarked, index) => {
                 if (isMarked) {
                     const markerElement = document.createElement('div');
@@ -565,28 +696,102 @@
                     markerElement.style.left = `${allowedMarkerPositions[index].xPercent}%`;
                     markerElement.style.top = `${allowedMarkerPositions[index].yPercent}%`;
 
-                    // Click to remove marker
-                    markerElement.onclick = (event) => {
-                        event.stopPropagation();
-                        markedFields[index] = false;
-                        createMarkers(cardWrapper, markedFields);
-                    };
+                    // Add data attributes for debugging
+                    markerElement.dataset.index = index;
+                    markerElement.dataset.cardId = cardId;
+
+                    // Click to remove marker - use addEventListener instead of onclick
+                    markerElement.addEventListener('click', function(event) {
+                        event.stopPropagation(); // Prevent event bubbling
+
+                        // Update the card data in the array
+                        cardData.markedFields[index] = false;
+
+                        // Recreate markers
+                        createMarkers(cardWrapper, cardData.markedFields);
+
+                        // Save changes if logged in
+                        if (auth.currentUser) {
+                            debouncedSaveUserCards();
+                        }
+
+                        console.log(`Removed marker ${index} from card ${cardId}`);
+                    });
 
                     cardWrapper.appendChild(markerElement);
                 }
             });
         }
+        // Replace your existing removeCard function with this one
+        function removeCard(cardId) {
+            console.log("Remove called for cardId:", cardId);
 
-        function removeCard(cardWrapper, cardId) {
+            // Convert to the same type (string) for comparison
+            const stringCardId = String(cardId);
+
+            // Find the card in our array
+            const index = cards.findIndex(card => String(card.id) === stringCardId);
+
+            if (index !== -1) {
+                // Remove from our array
+                cards.splice(index, 1);
+
+                // Re-render the UI
+                renderCards();
+
+                // First remove from the DOM directly
+                const cardElement = document.querySelector(`.card-container[data-card-id="${stringCardId}"]`);
+                if (cardElement) {
+                    cardElement.remove();
+                }
+
+                // Then try to save to Firebase if logged in
+                if (auth.currentUser) {
+                    try {
+                        saveUserCards(auth.currentUser.uid);
+                        console.log("Card removed and saved to Firebase");
+                    } catch (err) {
+                        console.error("Failed to save to Firebase:", err);
+                    }
+                } else {
+                    console.log("Card removed locally (user not logged in)");
+                }
+            } else {
+                console.error("Card not found in array:", stringCardId);
+            }
+        }
+
+        // Add this function to your JavaScript
+        function removeCardDirect(element) {
+            // Get the card container
+            const cardContainer = element.closest('.card-container');
+            if (!cardContainer) return;
+
+            // Get the card ID
+            const cardId = cardContainer.dataset.cardId;
+            console.log("Direct remove for card ID:", cardId);
+
             // Remove from DOM
-            cardWrapper.remove();
+            cardContainer.remove();
 
-            // Remove from cards array
-            const index = cards.findIndex(card => card.id === cardId);
+            // Remove from array
+            const index = cards.findIndex(card => String(card.id) === String(cardId));
             if (index !== -1) {
                 cards.splice(index, 1);
+                console.log("Card removed from array");
+
+                // Update menu
                 updateCardsList();
-                debouncedSaveUserCards(); // Save updated state after deletion
+
+                // Save to Firebase if logged in
+                if (auth.currentUser) {
+                    try {
+                        saveUserCards(auth.currentUser.uid);
+                        console.log("Changes saved to Firebase");
+                    } catch (err) {
+                        console.error("Error saving to Firebase:", err);
+                    }
+                }
             }
         }
 
