@@ -3,621 +3,546 @@
 
 <head>
     <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <meta content="width=device-width, initial-scale=1.0" name="viewport">
     <title>City of Mist Tracking Cards</title>
-    <style>
-        :root {
-            --primary-color: #3b82f6;
-            --danger-color: #ef4444;
-            --bg-color: #f3f4f6;
-            --card-bg: #ffffff;
-            --text-color: #1f2937;
-            --shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.1), 0 2px 4px -1px rgba(0, 0, 0, 0.06);
+    <link href="css/styles.css" rel="stylesheet">
+</head>
+
+<body>
+<!-- Side Menu -->
+<div class="menu-container" id="sideMenu">
+    <div class="menu-header">
+        <h2>Cards</h2>
+        <button class="menu-toggle" id="closeMenu">
+            <span></span>
+            <span></span>
+        </button>
+    </div>
+    <ul class="menu-list" id="cardsList">
+        <!-- Card list items will be added here -->
+    </ul>
+</div>
+<div class="backdrop" id="menuBackdrop"></div>
+
+<div class="container">
+    <header>
+        <h1>City of Mist Tracking Cards</h1>
+        <button class="menu-toggle" id="openMenu">
+            <span></span>
+            <span></span>
+            <span></span>
+        </button>
+    </header>
+
+    <button class="add-button" id="addCard">
+        <svg fill="currentColor" viewBox="0 0 20 20" xmlns="http://www.w3.org/2000/svg">
+            <path clip-rule="evenodd"
+                  d="M10 3a1 1 0 011 1v5h5a1 1 0 110 2h-5v5a1 1 0 11-2 0v-5H4a1 1 0 110-2h5V4a1 1 0 011-1z"
+                  fill-rule="evenodd"/>
+        </svg>
+        Add Card
+    </button>
+
+    <div class="card-grid" id="cardsContainer"></div>
+</div>
+
+<button id="loginBtn">Sign in with Google</button>
+<button id="logoutBtn">Sign Out</button>
+<p id="userName"></p>
+
+<!-- Firebase initialization module -->
+<script type="module">
+    // 🔥 Import Firebase SDK
+    import {initializeApp} from "https://www.gstatic.com/firebasejs/9.6.7/firebase-app.js";
+    import {
+        getAuth,
+        GoogleAuthProvider,
+        signInWithPopup,
+        signOut
+    } from "https://www.gstatic.com/firebasejs/9.6.7/firebase-auth.js";
+    import {
+        doc,
+        getFirestore,
+        onSnapshot,
+        setDoc
+    } from "https://www.gstatic.com/firebasejs/9.6.7/firebase-firestore.js";
+
+    // 🔥 Firebase Config
+    const firebaseConfig = {
+        apiKey: "AIzaSyCGzjtIiXJfU6XlSNCYRddwCK3W1IgbSw0",
+        authDomain: "cityofmist-1c99a.firebaseapp.com",
+        projectId: "cityofmist-1c99a",
+        storageBucket: "cityofmist-1c99a.firebasebasestorage.app",
+        messagingSenderId: "880900992962",
+        appId: "1:880900992962:web:907260d2552a33491cb05b",
+        measurementId: "G-BL2SCZXHQK"
+    };
+
+    // 🔹 Initialize Firebase
+    const app = initializeApp(firebaseConfig);
+    const auth = getAuth(app);
+    const db = getFirestore(app);
+    const provider = new GoogleAuthProvider();
+
+    // 🔹 Save User Cards to Firestore
+    async function saveUserCards(userId) {
+        try {
+            console.log("Saving cards to Firebase:", cards.length, "cards");
+            await setDoc(doc(db, "users", userId), {cards});
+            console.log("✅ Cards saved successfully!");
+        } catch (error) {
+            console.error("❌ Error saving cards:", error);
         }
+    }
 
-        body {
-            margin: 0;
-            padding: 20px;
-            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
-            background-color: var(--bg-color);
-            color: var(--text-color);
-        }
-
-        .container {
-            max-width: 1200px;
-            margin: 0 auto;
-            padding: 0 16px;
-        }
-
-        header {
-            display: flex;
-            justify-content: space-between;
-            align-items: center;
-            margin-bottom: 24px;
-        }
-
-        h1 {
-            margin: 0;
-            font-size: 1.75rem;
-        }
-
-        .card-grid {
-            display: grid;
-            grid-template-columns: repeat(auto-fill, minmax(300px, 1fr));
-            gap: 24px;
-        }
-
-        .card-container {
-            position: relative;
-            border: 1px solid #e5e7eb;
-            padding: 16px;
-            background: var(--card-bg);
-            border-radius: 8px;
-            box-shadow: var(--shadow);
-            transition: transform 0.2s, box-shadow 0.2s;
-        }
-
-        .card-container:hover {
-            transform: translateY(-2px);
-            box-shadow: 0 10px 15px -3px rgba(0, 0, 0, 0.1), 0 4px 6px -2px rgba(0, 0, 0, 0.05);
-        }
-
-        .tracking-card-wrapper {
-            position: relative;
-            width: 100%;
-        }
-
-        .tracking-card {
-            display: block;
-            width: 100%;
-            height: auto;
-        }
-
-        .field-marker {
-            position: absolute;
-            width: 12px;
-            height: 12px;
-            background-color: rgba(166, 81, 55, 1);
-            border-radius: 50%;
-            opacity: 0.9;
-            transform: translate(-50%, -50%);
-            cursor: pointer;
-            transition: transform 0.1s, background-color 0.2s;
-        }
-
-        .field-marker:hover {
-            transform: translate(-50%, -50%) scale(1.2);
-            background-color: rgba(166, 81, 55, 1);
-        }
-
-        .tag-input {
-            width: 80%;
-            margin-top: 12px;
-            background: var(--card-bg);
-            border: 1px solid #e5e7eb;
-            border-radius: 4px;
-            font-size: 16px;
-            padding: 8px 12px;
-            transition: border-color 0.2s;
-        }
-
-        .tag-input:focus {
-            outline: none;
-            border-color: var(--primary-color);
-            box-shadow: 0 0 0 3px rgba(59, 130, 246, 0.2);
-        }
-
-        .card-actions {
-            display: flex;
-            justify-content: flex-end;
-            margin-top: 12px;
-        }
-
-        button {
-            border: none;
-            padding: 8px 16px;
-            cursor: pointer;
-            border-radius: 4px;
-            font-weight: 500;
-            transition: background-color 0.2s, transform 0.1s;
-        }
-
-        button:active {
-            transform: translateY(1px);
-        }
-
-        .remove-button {
-            background-color: var(--danger-color);
-            color: white;
-        }
-
-        .remove-button:hover {
-            background-color: #dc2626;
-        }
-
-        .add-button {
-            background-color: var(--primary-color);
-            color: white;
-            display: flex;
-            align-items: center;
-            gap: 8px;
-        }
-
-        .add-button:hover {
-            background-color: #2563eb;
-        }
-
-        .add-button svg {
-            width: 16px;
-            height: 16px;
-        }
-
-        /* Sidebar menu */
-        .menu-container {
-            position: fixed;
-            top: 0;
-            left: -300px;
-            width: 300px;
-            height: 100%;
-            background-color: var(--card-bg);
-            box-shadow: var(--shadow);
-            transition: left 0.3s ease;
-            z-index: 1000;
-            overflow-y: auto;
-        }
-
-        .menu-container.open {
-            left: 0;
-        }
-
-        .menu-header {
-            display: flex;
-            justify-content: space-between;
-            align-items: center;
-            padding: 16px;
-            border-bottom: 1px solid #e5e7eb;
-        }
-
-        .menu-list {
-            list-style: none;
-            padding: 0;
-            margin: 0;
-        }
-
-        .menu-item {
-            padding: 12px 16px;
-            border-bottom: 1px solid #f3f4f6;
-            cursor: pointer;
-            transition: background-color 0.2s;
-        }
-
-        .menu-item:hover {
-            background-color: #f9fafb;
-        }
-
-        .menu-toggle {
-            background: none;
-            border: none;
-            cursor: pointer;
-            display: flex;
-            flex-direction: column;
-            gap: 5px;
-            padding: 8px;
-        }
-
-        .menu-toggle span {
-            display: block;
-            width: 24px;
-            height: 3px;
-            background-color: var(--text-color);
-            border-radius: 3px;
-            transition: transform 0.2s;
-        }
-
-        .backdrop {
-            position: fixed;
-            top: 0;
-            left: 0;
-            width: 100%;
-            height: 100%;
-            background-color: rgba(0, 0, 0, 0.5);
-            z-index: 999;
-            display: none;
-        }
-
-        .backdrop.open {
-            display: block;
-        }
-    </style>
-    <script type="module">
-        // 🔥 Import Firebase SDK
-        import { initializeApp } from "https://www.gstatic.com/firebasejs/9.6.7/firebase-app.js";
-        import { getAuth, GoogleAuthProvider, signInWithPopup, signOut } from "https://www.gstatic.com/firebasejs/9.6.7/firebase-auth.js";
-        import { getFirestore, doc, setDoc, getDoc, onSnapshot } from "https://www.gstatic.com/firebasejs/9.6.7/firebase-firestore.js";
-
-
-        // 🔥 Replace with your Firebase Config
-        const firebaseConfig = {
-            apiKey: "AIzaSyCGzjtIiXJfU6XlSNCYRddwCK3W1IgbSw0",
-            authDomain: "cityofmist-1c99a.firebaseapp.com",
-            projectId: "cityofmist-1c99a",
-            storageBucket: "cityofmist-1c99a.firebasestorage.app",
-            messagingSenderId: "880900992962",
-            appId: "1:880900992962:web:907260d2552a33491cb05b",
-            measurementId: "G-BL2SCZXHQK"
+    function debounce(func, delay) {
+        let debounceTimer;
+        return function (...args) {
+            const context = this;
+            clearTimeout(debounceTimer);
+            debounceTimer = setTimeout(() => func.apply(context, args), delay);
         };
+    }
 
-        // 🔹 Initialize Firebase
-        const app = initializeApp(firebaseConfig);
-        const auth = getAuth(app);
-        const db = getFirestore(app);
-        const provider = new GoogleAuthProvider();
+    // Create a debounced version with a 500ms delay
+    const debouncedSaveUserCards = debounce(() => {
+        if (auth.currentUser) {
+            saveUserCards(auth.currentUser.uid);
+        } else {
+            console.log("Not saving: No user logged in");
+        }
+    }, 2000);
 
-        // 🔹 Sign In
-        async function login() {
+    // 🔹 Sign In
+    async function login() {
+        try {
             const result = await signInWithPopup(auth, provider);
             const user = result.user;
             document.getElementById('userName').innerText = `Welcome, ${user.displayName}`;
             subscribeToUserCards(user.uid);
+        } catch (error) {
+            console.error("Login error:", error);
         }
+    }
 
+    // 🔹 Sign Out
+    function logout() {
+        signOut(auth);
+        document.getElementById('userName').innerText = "Signed out";
+        document.getElementById('cardsContainer').innerHTML = "";
+    }
 
-        // 🔹 Sign Out
-        function logout() {
-            signOut(auth);
-            document.getElementById('userName').innerText = "Signed out";
-            document.getElementById('cardsContainer').innerHTML = "";
-        }
+    // 🔹 Load User Cards
+    function subscribeToUserCards(userId) {
+        const docRef = doc(db, "users", userId);
+        onSnapshot(docRef, (docSnap) => {
+            if (docSnap.exists()) {
+                const data = docSnap.data();
+                if (data.cards) {
+                    console.log("Received cards data from Firebase:", data.cards.length, "cards");
 
-        // 🔹 Load User Cards
-        function subscribeToUserCards(userId) {
-            const docRef = doc(db, "users", userId);
-            onSnapshot(docRef, (docSnap) => {
-                if (docSnap.exists()) {
-                    const data = docSnap.data();
-                    if (data.cards) {
-                        console.log("Received cards data from Firebase:", data.cards);
+                    // Update the local state
+                    window.cards = data.cards;
 
-                        // Update the local state
-                        cards = data.cards;
+                    // Render cards from the updated data
+                    window.renderCards();
 
-                        // Render cards from the updated data
-                        renderCards();
-
-                        // Log success
-                        console.log("Cards loaded and rendered from Firebase");
-                    } else {
-                        console.log("No cards found in user document");
-                    }
+                    console.log("Cards loaded and rendered from Firebase");
                 } else {
-                    console.log("User document doesn't exist yet");
+                    console.log("No cards found in user document");
+                    window.cards = [];
                     // Create it with an empty cards array
-                    setDoc(docRef, { cards: [] });
+                    setDoc(docRef, {cards: []});
+                }
+            } else {
+                console.log("User document doesn't exist yet");
+                window.cards = [];
+                // Create it with an empty cards array
+                setDoc(docRef, {cards: []});
+            }
+        });
+    }
+
+    // 🔹 Event Listeners
+    document.getElementById('loginBtn').addEventListener('click', login);
+    document.getElementById('logoutBtn').addEventListener('click', logout);
+
+    // IMPORTANT: Expose Firebase functions to global scope
+    window.auth = auth;
+    window.saveUserCards = saveUserCards;
+    window.debouncedSaveUserCards = debouncedSaveUserCards;
+    window.subscribeToUserCards = subscribeToUserCards;
+    window.db = db;
+</script>
+
+<!-- Main application script -->
+<script>
+    const cardsContainer = document.getElementById('cardsContainer');
+    const addCardButton = document.getElementById('addCard');
+    const cardsList = document.getElementById('cardsList');
+    const sideMenu = document.getElementById('sideMenu');
+    const openMenuBtn = document.getElementById('openMenu');
+    const closeMenuBtn = document.getElementById('closeMenu');
+    const menuBackdrop = document.getElementById('menuBackdrop');
+
+    let cardCount = 0;
+    window.cards = []; // Make it available for Firebase module
+
+    // Define positions as percentages of the image width and height
+    const allowedMarkerPositions = [
+        {xPercent: 22.0, yPercent: 44}, {xPercent: 29.0, yPercent: 44},
+        {xPercent: 33.5, yPercent: 44}, {xPercent: 38.0, yPercent: 44},
+        {xPercent: 42.0, yPercent: 44}, {xPercent: 45.0, yPercent: 44},
+        {xPercent: 49.5, yPercent: 44}, {xPercent: 54.0, yPercent: 44},
+        {xPercent: 57.0, yPercent: 44}, {xPercent: 60.0, yPercent: 44},
+        {xPercent: 64.0, yPercent: 44}, {xPercent: 69.0, yPercent: 44},
+        {xPercent: 71.0, yPercent: 44}, {xPercent: 74.0, yPercent: 44},
+        {xPercent: 77.0, yPercent: 44}, {xPercent: 82.0, yPercent: 44},
+        {xPercent: 65, yPercent: 32, symbol: '🔍'}, // Magnifying glass
+        {xPercent: 71.5, yPercent: 32, symbol: '🔋'}, // Battery
+        {xPercent: 76.5, yPercent: 32, symbol: '🏷️'}, // Tag
+        {xPercent: 82.0, yPercent: 32, symbol: '💊'}  // Pill as medpack
+    ];
+
+    // Menu handlers
+    openMenuBtn.addEventListener('click', () => {
+        sideMenu.classList.add('open');
+        menuBackdrop.classList.add('open');
+    });
+
+    function closeMenu() {
+        sideMenu.classList.remove('open');
+        menuBackdrop.classList.remove('open');
+    }
+
+    closeMenuBtn.addEventListener('click', closeMenu);
+    menuBackdrop.addEventListener('click', closeMenu);
+
+    function updateCardsList() {
+        // Clear current list
+        cardsList.innerHTML = '';
+
+        // Sort cards by tag name
+        cards.sort((a, b) => {
+            const tagA = (a.tagName || '').toLowerCase();
+            const tagB = (b.tagName || '').toLowerCase();
+            return tagA.localeCompare(tagB);
+        });
+
+        // Add items to the menu
+        cards.forEach(card => {
+            const listItem = document.createElement('li');
+            listItem.className = 'menu-item';
+            listItem.textContent = card.tagName || 'Unnamed Card';
+            listItem.dataset.cardId = card.id;
+
+            // Scroll to the card when clicked
+            listItem.addEventListener('click', () => {
+                const targetCard = document.querySelector(`.card-container[data-card-id="${card.id}"]`);
+                if (targetCard) {
+                    targetCard.scrollIntoView({behavior: 'smooth', block: 'center'});
+                    targetCard.style.outline = '2px solid var(--primary-color)';
+                    setTimeout(() => {
+                        targetCard.style.outline = 'none';
+                    }, 1500);
+                }
+                closeMenu();
+            });
+
+            cardsList.appendChild(listItem);
+        });
+    }
+
+    // Generate a unique card ID using timestamp
+    function generateCardId() {
+        return Date.now().toString();
+    }
+
+    function createCard() {
+        cardCount++;
+        const cardId = generateCardId();
+        console.log("Creating new card with ID:", cardId);
+
+        // Create Card Wrapper
+        const cardWrapper = document.createElement('div');
+        cardWrapper.className = 'card-container';
+        cardWrapper.dataset.cardId = cardId;
+
+        // Create Image Container (set to relative positioning)
+        const trackingCardWrapper = document.createElement('div');
+        trackingCardWrapper.className = 'tracking-card-wrapper';
+
+        // Create Image
+        const trackingCard = document.createElement('img');
+        trackingCard.src = "tracker.png";  // Change to your actual image path
+        trackingCard.alt = "City of Mist Tracking Card";
+        trackingCard.className = 'tracking-card';
+        trackingCard.dataset.cardId = cardId;
+
+        // Create Input Field for TAGS
+        const tagInput = document.createElement('input');
+        tagInput.type = 'text';
+        tagInput.className = 'tag-input';
+        tagInput.placeholder = 'Enter TAG here';
+        // Style the input
+        tagInput.style.position = 'absolute';
+        tagInput.style.left = '58%';
+        tagInput.style.top = '50%';
+        tagInput.style.transform = 'translateX(-50%)';
+        tagInput.style.background = 'rgba(255,255,255,0.8)';
+        tagInput.style.padding = '6px 12px';
+        tagInput.style.borderRadius = '6px';
+        tagInput.style.width = '38%';
+
+        // Append the image first (input will be on top)
+        trackingCardWrapper.appendChild(trackingCard);
+        // Append input after the image
+        trackingCardWrapper.appendChild(tagInput);
+
+        // Store card data
+        const cardData = {
+            id: cardId,
+            tagName: '',
+            markedFields: Array(allowedMarkerPositions.length).fill(false)
+        };
+        cards.push(cardData);
+
+        // Update tag name on input
+        tagInput.addEventListener('input', function () {
+            cardData.tagName = this.value;
+            updateCardsList();
+
+            // Save to Firebase
+            if (window.auth && window.auth.currentUser) {
+                console.log("Tag updated, saving to Firebase");
+                window.debouncedSaveUserCards();
+            }
+        });
+
+        // Create actions container
+        const actionsDiv = document.createElement('div');
+        actionsDiv.className = 'card-actions';
+
+        // Create Remove Button with direct removal approach
+        const removeButton = document.createElement('button');
+        removeButton.textContent = "Remove";
+        removeButton.className = "remove-button";
+        removeButton.addEventListener('click', function (e) {
+            e.preventDefault();
+            e.stopPropagation();
+            console.log("Remove button clicked for card:", cardId);
+
+            // Direct removal approach
+            cardWrapper.remove();
+
+            // Also remove from array
+            const index = cards.findIndex(c => c.id === cardId);
+            if (index !== -1) {
+                cards.splice(index, 1);
+                updateCardsList();
+
+                // Save if authenticated - DIRECT call to Firebase
+                if (window.auth && window.auth.currentUser) {
+                    console.log("Card removed, saving to Firebase");
+                    window.saveUserCards(window.auth.currentUser.uid);
+                }
+            }
+        });
+
+        // Attach the remove button
+        actionsDiv.appendChild(removeButton);
+
+        // Set up marker toggling on the wrapper (or image)
+        trackingCard.addEventListener('click', function (event) {
+            const rect = trackingCard.getBoundingClientRect();
+            const x = event.clientX - rect.left;
+            const y = event.clientY - rect.top;
+
+            // Convert to percentages
+            const xPercent = (x / rect.width) * 100;
+            const yPercent = (y / rect.height) * 100;
+
+            // Find the closest predefined marker position
+            let closestIndex = -1;
+            let closestDistance = 5; // Max clickable radius in percentage
+
+            allowedMarkerPositions.forEach((pos, index) => {
+                const distance = Math.sqrt(
+                    Math.pow(xPercent - pos.xPercent, 2) +
+                    Math.pow(yPercent - pos.yPercent, 2)
+                );
+                if (distance < closestDistance) {
+                    closestDistance = distance;
+                    closestIndex = index;
                 }
             });
-        }
 
-        function renderCards() {
-            // Clear the container
-            cardsContainer.innerHTML = '';
-
-            // Clear the side menu
-            cardsList.innerHTML = '';
-
-            // Rebuild each card from the 'cards' JSON array
-            cards.forEach(cardData => {
-                // Create card container and its elements using cardData values
-                const cardWrapper = document.createElement('div');
-                cardWrapper.className = 'card-container';
-                cardWrapper.dataset.cardId = cardData.id;
-
-                // Create tracking card wrapper, image, tag input, etc.
-                const trackingCardWrapper = document.createElement('div');
-                trackingCardWrapper.className = 'tracking-card-wrapper';
-
-                const trackingCard = document.createElement('img');
-                trackingCard.src = "tracker.png";
-                trackingCard.alt = "City of Mist Tracking Card";
-                trackingCard.className = 'tracking-card';
-                trackingCard.dataset.cardId = cardData.id;
-
-                // Create tag input
-                const tagInput = document.createElement('input');
-                tagInput.type = 'text';
-                tagInput.className = 'tag-input';
-                tagInput.placeholder = 'Enter TAG here';
-                tagInput.style.position = 'absolute';
-                tagInput.style.left = '58%';
-                tagInput.style.top = '50%';
-                tagInput.style.transform = 'translateX(-50%)';
-                tagInput.style.background = 'rgba(255,255,255,0.8)';
-                tagInput.style.padding = '6px 12px';
-                tagInput.style.borderRadius = '6px';
-                tagInput.style.width = '38%';
-                tagInput.value = cardData.tagName;
-
-                // Bind tag input event listener
-                tagInput.addEventListener('input', function () {
-                    cardData.tagName = this.value;
-                    updateCardsList(); // Update side menu if needed
-                    debouncedSaveUserCards();
-                });
-
-                trackingCard.addEventListener('click', function(event) {
-                    const rect = this.getBoundingClientRect();
-                    const x = event.clientX - rect.left;
-                    const y = event.clientY - rect.top;
-
-                    // Get card ID from the clicked element
-                    const cardId = this.dataset.cardId;
-
-                    // Find the card data in our array
-                    const cardData = cards.find(card => String(card.id) === String(cardId));
-                    if (!cardData) {
-                        console.error("Card click: Card data not found for ID", cardId);
-                        return;
-                    }
-
-                    // Convert to percentages
-                    const xPercent = (x / rect.width) * 100;
-                    const yPercent = (y / rect.height) * 100;
-
-                    // Find the closest predefined marker position
-                    let closestIndex = -1;
-                    let closestDistance = 5; // Max clickable radius in percentage
-
-                    allowedMarkerPositions.forEach((pos, index) => {
-                        const distance = Math.sqrt(
-                            Math.pow(xPercent - pos.xPercent, 2) +
-                            Math.pow(yPercent - pos.yPercent, 2)
-                        );
-                        if (distance < closestDistance) {
-                            closestDistance = distance;
-                            closestIndex = index;
-                        }
-                    });
-
-                    // Toggle marker at the found position
-                    if (closestIndex !== -1) {
-                        console.log(`Toggling marker ${closestIndex} on card ${cardId}`);
-                        cardData.markedFields[closestIndex] = !cardData.markedFields[closestIndex];
-
-                        // Get the card wrapper (parent of the image)
-                        const wrapper = this.closest('.tracking-card-wrapper');
-                        if (wrapper) {
-                            createMarkers(wrapper, cardData.markedFields);
-
-                            // Save changes if logged in
-                            if (auth.currentUser) {
-                                debouncedSaveUserCards();
-                            }
-                        }
-                    }
-                });
-
-                // Append elements in proper order
-                trackingCardWrapper.appendChild(trackingCard);
-                trackingCardWrapper.appendChild(tagInput);
-
-                // Create and bind remove button
-                const actionsDiv = document.createElement('div');
-                actionsDiv.className = 'card-actions';
-                const removeButton = document.createElement('button');
-                removeButton.textContent = "Remove";
-                removeButton.className = "remove-button";
-                removeButton.onclick = function(e) {
-                    e.stopPropagation(); // Stop event bubbling
-                    removeCardDirect(this); // 'this' refers to the button
-                };
-                actionsDiv.appendChild(removeButton);
-
-                cardWrapper.appendChild(trackingCardWrapper);
-                cardWrapper.appendChild(actionsDiv);
-                cardsContainer.appendChild(cardWrapper);
-
-                // Render markers based on cardData.markedFields
+            // Toggle marker at the found position
+            if (closestIndex !== -1) {
+                console.log(`Toggling marker ${closestIndex} on card ${cardId}`);
+                cardData.markedFields[closestIndex] = !cardData.markedFields[closestIndex];
                 createMarkers(trackingCardWrapper, cardData.markedFields);
 
-                // Also update the side menu for each card
-                const listItem = document.createElement('li');
-                listItem.className = 'menu-item';
-                listItem.textContent = cardData.tagName || 'Unnamed Card';
-                listItem.dataset.cardId = cardData.id;
-                listItem.addEventListener('click', () => {
-                    const targetCard = document.querySelector(`.card-container[data-card-id="${cardData.id}"]`);
-                    if (targetCard) {
-                        targetCard.scrollIntoView({ behavior: 'smooth', block: 'center' });
-                        targetCard.style.outline = '2px solid var(--primary-color)';
-                        setTimeout(() => {
-                            targetCard.style.outline = 'none';
-                        }, 1500);
-                    }
-                    closeMenu();
-                });
-                cardsList.appendChild(listItem);
-            });
-        }
-
-
-        function debounce(func, delay) {
-            let debounceTimer;
-            return function (...args) {
-                const context = this;
-                clearTimeout(debounceTimer);
-                debounceTimer = setTimeout(() => func.apply(context, args), delay);
-            };
-        }
-
-        // 🔹 Save User Cards to Firestore
-        async function saveUserCards(userId) {
-            try {
-                await setDoc(doc(db, "users", userId), { cards });
-                console.log("✅ Cards saved successfully!");
-            } catch (error) {
-                console.error("❌ Error saving cards:", error);
-            }
-        }
-
-        // Create a debounced version of the save function with a 500ms delay
-        const debouncedSaveUserCards = debounce(() => {
-            if (auth.currentUser) {
-                saveUserCards(auth.currentUser.uid);
-            }
-        }, 500);
-
-
-        // 🔹 Event Listeners
-        document.getElementById('loginBtn').addEventListener('click', login);
-        document.getElementById('logoutBtn').addEventListener('click', logout);
-
-        // Save when a new card is added
-        document.getElementById('addCard').addEventListener('click', () => {
-            if (auth.currentUser) {
-                saveUserCards(auth.currentUser.uid);
+                // DIRECT save to Firebase when marker toggled
+                if (window.auth && window.auth.currentUser) {
+                    console.log("Marker toggled, saving to Firebase");
+                    window.saveUserCards(window.auth.currentUser.uid);
+                }
             }
         });
-    </script>
 
-</head>
+        // Append elements to the card container
+        cardWrapper.appendChild(trackingCardWrapper);
+        cardWrapper.appendChild(actionsDiv);
+        cardsContainer.appendChild(cardWrapper);
 
-<body>
-    <!-- Side Menu -->
-    <div class="menu-container" id="sideMenu">
-        <div class="menu-header">
-            <h2>Cards</h2>
-            <button id="closeMenu" class="menu-toggle">
-                <span></span>
-                <span></span>
-            </button>
-        </div>
-        <ul class="menu-list" id="cardsList">
-            <!-- Card list items will be added here -->
-        </ul>
-    </div>
-    <div class="backdrop" id="menuBackdrop"></div>
+        // Draw initial markers
+        createMarkers(trackingCardWrapper, cardData.markedFields);
 
-    <div class="container">
-        <header>
-            <h1>City of Mist Tracking Cards</h1>
-            <button id="openMenu" class="menu-toggle">
-                <span></span>
-                <span></span>
-                <span></span>
-            </button>
-        </header>
+        // Update the side menu list
+        updateCardsList();
 
-        <button id="addCard" class="add-button">
-            <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 20 20" fill="currentColor">
-                <path fill-rule="evenodd"
-                    d="M10 3a1 1 0 011 1v5h5a1 1 0 110 2h-5v5a1 1 0 11-2 0v-5H4a1 1 0 110-2h5V4a1 1 0 011-1z"
-                    clip-rule="evenodd" />
-            </svg>
-            Add Card
-        </button>
-
-        <div id="cardsContainer" class="card-grid"></div>
-    </div>
-
-    <script>
-        const cardsContainer = document.getElementById('cardsContainer');
-        const addCardButton = document.getElementById('addCard');
-        const cardsList = document.getElementById('cardsList');
-        const sideMenu = document.getElementById('sideMenu');
-        const openMenuBtn = document.getElementById('openMenu');
-        const closeMenuBtn = document.getElementById('closeMenu');
-        const menuBackdrop = document.getElementById('menuBackdrop');
-
-        let cardCount = 0;
-        let cards = [];
-
-        // Define positions as percentages of the image width and height
-        const allowedMarkerPositions = [
-            { xPercent: 22.0, yPercent: 44 }, { xPercent: 29.0, yPercent: 44 },
-            { xPercent: 33.0, yPercent: 44 }, { xPercent: 37.0, yPercent: 44 },
-            { xPercent: 42.0, yPercent: 44 }, { xPercent: 45.0, yPercent: 44 },
-            { xPercent: 49.5, yPercent: 44 }, { xPercent: 54.0, yPercent: 44 },
-            { xPercent: 57.0, yPercent: 44 }, { xPercent: 60.0, yPercent: 44 },
-            { xPercent: 64.0, yPercent: 44 }, { xPercent: 84.6, yPercent: 44 },
-            { xPercent: 87.7, yPercent: 44 }, { xPercent: 91.5, yPercent: 44 },
-            { xPercent: 94.6, yPercent: 44 }, { xPercent: 100.0, yPercent: 44 }
-        ];
-
-        // Menu handlersW
-        openMenuBtn.addEventListener('click', () => {
-            sideMenu.classList.add('open');
-            menuBackdrop.classList.add('open');
-        });
-
-        function closeMenu() {
-            sideMenu.classList.remove('open');
-            menuBackdrop.classList.remove('open');
+        // Save the new card to Firebase
+        if (window.auth && window.auth.currentUser) {
+            console.log("New card created, saving to Firebase");
+            window.saveUserCards(window.auth.currentUser.uid);
         }
 
-        closeMenuBtn.addEventListener('click', closeMenu);
-        menuBackdrop.addEventListener('click', closeMenu);
+        console.log("Card created with ID:", cardId);
+        return cardId;
+    }
 
-        function updateCardsList() {
-            // Clear current list
-            cardsList.innerHTML = '';
+    function createMarkers(cardWrapper, markedFields) {
+        // Remove all existing markers from the cardWrapper
+        cardWrapper.querySelectorAll('.field-marker').forEach(marker => marker.remove());
 
-            // Sort cards by tag name
-            cards.sort((a, b) => {
-                const tagA = (a.tagName || '').toLowerCase();
-                const tagB = (b.tagName || '').toLowerCase();
-                return tagA.localeCompare(tagB);
-            });
+        // Get the card image to retrieve the card's ID
+        const cardImage = cardWrapper.querySelector('.tracking-card');
+        const cardId = cardImage ? cardImage.dataset.cardId : null;
+        if (!cardId) {
+            console.error("Card ID not found in createMarkers.");
+            return;
+        }
 
-            // Add items to the menu
-            cards.forEach(card => {
-                const listItem = document.createElement('li');
-                listItem.className = 'menu-item';
-                listItem.textContent = card.tagName || 'Unnamed Card';
-                listItem.dataset.cardId = card.id;
+        // Find the corresponding card data from the global 'cards' array
+        const cardData = cards.find(card => String(card.id) === String(cardId));
+        if (!cardData) {
+            console.error("Card data not found for cardId", cardId);
+            return;
+        }
 
-                // Scroll to the card when clicked
-                listItem.addEventListener('click', () => {
-                    const targetCard = document.querySelector(`.card-container[data-card-id="${card.id}"]`);
-                    if (targetCard) {
-                        targetCard.scrollIntoView({ behavior: 'smooth', block: 'center' });
-                        targetCard.style.outline = '2px solid var(--primary-color)';
-                        setTimeout(() => {
-                            targetCard.style.outline = 'none';
-                        }, 1500);
+        // Loop through each marker state (true/false) in the markedFields array
+        markedFields.forEach((isMarked, index) => {
+            if (isMarked) {
+                // Retrieve the marker position object from allowedMarkerPositions
+                const pos = allowedMarkerPositions[index];
+                const markerElement = document.createElement('div');
+                markerElement.className = 'field-marker';
+
+                // Position the marker using percentage values
+                markerElement.style.left = `${pos.xPercent}%`;
+                markerElement.style.top = `${pos.yPercent}%`;
+
+                // Check if this position should display a Unicode symbol
+                if (pos.symbol) {
+                    // Set the text content to the Unicode symbol
+                    markerElement.textContent = pos.symbol;
+                    // Adjust the styling so the symbol is clearly visible
+                    markerElement.style.fontSize = '20px';      // Adjust size as needed
+                    markerElement.style.width = 'auto';           // Allow the text to define the width
+                    markerElement.style.height = 'auto';
+                    markerElement.style.lineHeight = '1';
+                    markerElement.style.backgroundColor = 'transparent'; // Remove any background color
+                    markerElement.style.borderRadius = '0';       // Remove round shape
+                    markerElement.style.textAlign = 'center';
+                } else {
+                    // Default marker styling for positions without a symbol
+                    markerElement.style.backgroundColor = 'rgba(166, 81, 55, 1)';
+                    markerElement.style.width = '12px';
+                    markerElement.style.height = '12px';
+                    markerElement.style.borderRadius = '50%';
+                }
+
+                // Add click event to toggle the marker off
+                markerElement.addEventListener('click', function(event) {
+                    event.stopPropagation();
+                    // Toggle marker off for this position
+                    cardData.markedFields[index] = false;
+                    // Re-render the markers
+                    createMarkers(cardWrapper, cardData.markedFields);
+
+                    // Save directly to Firebase after removing marker
+                    if (window.auth && window.auth.currentUser) {
+                        console.log("Marker removed, saving to Firebase");
+                        window.saveUserCards(window.auth.currentUser.uid);
                     }
-                    closeMenu();
                 });
 
-                cardsList.appendChild(listItem);
-            });
+                // Append the marker element to the cardWrapper
+                cardWrapper.appendChild(markerElement);
+            }
+        });
+    }
+
+    function removeCardDirect(element) {
+        // Get the card container
+        const cardContainer = element.closest('.card-container');
+        if (!cardContainer) return;
+
+        // Get the card ID
+        const cardId = cardContainer.dataset.cardId;
+        console.log("Direct remove for card ID:", cardId);
+
+        // Remove from array
+        const index = cards.findIndex(card => String(card.id) === String(cardId));
+        if (index !== -1) {
+            cards.splice(index, 1);
+            console.log("Card removed from array, cards length:", cards.length);
+
+            // Update menu
+            updateCardsList();
+
+            // Save to Firebase if logged in - DIRECT call
+            if (window.auth && window.auth.currentUser) {
+                console.log("Card removed, saving directly to Firebase");
+                window.saveUserCards(window.auth.currentUser.uid);
+            }
+
+            // Remove from DOM after all operations are complete
+            cardContainer.remove();
         }
+    }
 
-        function createCard() {
-            cardCount++;
-            const cardId = Date.now(); // Use timestamp for unique ID
-            console.log("Creating new card with ID:", cardId);
+    // Render all cards from the cards array
+    window.renderCards = function() {
+        // Clear the container
+        cardsContainer.innerHTML = '';
 
-            // Create Card Wrapper
+        // Clear the side menu
+        cardsList.innerHTML = '';
+
+        // Rebuild each card from the 'cards' JSON array
+        cards.forEach(cardData => {
+            // Create card container and its elements using cardData values
             const cardWrapper = document.createElement('div');
             cardWrapper.className = 'card-container';
-            cardWrapper.dataset.cardId = cardId;
+            cardWrapper.dataset.cardId = cardData.id;
 
-            // Create Image Container (set to relative positioning)
+            // Create tracking card wrapper, image, tag input, etc.
             const trackingCardWrapper = document.createElement('div');
             trackingCardWrapper.className = 'tracking-card-wrapper';
 
-            // Create Image
             const trackingCard = document.createElement('img');
-            trackingCard.src = "tracker.png";  // Change to your actual image path
+            trackingCard.src = "tracker.png";
             trackingCard.alt = "City of Mist Tracking Card";
             trackingCard.className = 'tracking-card';
-            trackingCard.dataset.cardId = cardId;
+            trackingCard.dataset.cardId = cardData.id;
 
-            // Create Input Field for TAGS
+            // Create tag input
             const tagInput = document.createElement('input');
             tagInput.type = 'text';
             tagInput.className = 'tag-input';
             tagInput.placeholder = 'Enter TAG here';
-            // Style the input
             tagInput.style.position = 'absolute';
             tagInput.style.left = '58%';
             tagInput.style.top = '50%';
@@ -626,65 +551,34 @@
             tagInput.style.padding = '6px 12px';
             tagInput.style.borderRadius = '6px';
             tagInput.style.width = '38%';
+            tagInput.value = cardData.tagName || '';
 
-            // Append the image first (input will be on top)
-            trackingCardWrapper.appendChild(trackingCard);
-            // Append input after the image
-            trackingCardWrapper.appendChild(tagInput);
-
-            // Store card data
-            const cardData = {
-                id: cardId,
-                tagName: '',
-                markedFields: Array(allowedMarkerPositions.length).fill(false)
-            };
-            cards.push(cardData);
-
-            // Update tag name on input
-            tagInput.addEventListener('input', function() {
+            // Bind tag input event listener
+            tagInput.addEventListener('input', function () {
                 cardData.tagName = this.value;
                 updateCardsList();
-                if (auth.currentUser) {
-                    debouncedSaveUserCards();
+
+                // Save to Firebase
+                if (window.auth && window.auth.currentUser) {
+                    console.log("Tag updated, saving to Firebase");
+                    window.debouncedSaveUserCards();
                 }
             });
 
-            // Create actions container
-            const actionsDiv = document.createElement('div');
-            actionsDiv.className = 'card-actions';
-
-            // Create Remove Button with direct removal approach
-            const removeButton = document.createElement('button');
-            removeButton.textContent = "Remove";
-            removeButton.className = "remove-button";
-            removeButton.addEventListener('click', function(e) {
-                e.preventDefault();
-                e.stopPropagation();
-                console.log("Remove button clicked for card:", cardId);
-
-                // Direct removal approach
-                cardWrapper.remove();
-
-                // Also remove from array
-                const index = cards.findIndex(c => c.id === cardId);
-                if (index !== -1) {
-                    cards.splice(index, 1);
-                    updateCardsList();
-
-                    // Save if authenticated
-                    if (auth.currentUser) {
-                        saveUserCards(auth.currentUser.uid);
-                    }
-                }
-            });
-
-            // Attach the remove button
-            actionsDiv.appendChild(removeButton);
-            // Set up marker toggling on the wrapper (or image)
-            trackingCardWrapper.addEventListener('click', function (event) {
-                const rect = trackingCard.getBoundingClientRect();
+            trackingCard.addEventListener('click', function (event) {
+                const rect = this.getBoundingClientRect();
                 const x = event.clientX - rect.left;
                 const y = event.clientY - rect.top;
+
+                // Get card ID from the clicked element
+                const cardId = this.dataset.cardId;
+
+                // Find the card data in our array
+                const cardData = cards.find(card => String(card.id) === String(cardId));
+                if (!cardData) {
+                    console.error("Card click: Card data not found for ID", cardId);
+                    return;
+                }
 
                 // Convert to percentages
                 const xPercent = (x / rect.width) * 100;
@@ -707,168 +601,73 @@
 
                 // Toggle marker at the found position
                 if (closestIndex !== -1) {
+                    console.log(`Toggling marker ${closestIndex} on card ${cardId}`);
                     cardData.markedFields[closestIndex] = !cardData.markedFields[closestIndex];
-                    createMarkers(trackingCardWrapper, cardData.markedFields);
-                    debouncedSaveUserCards(); // Optionally trigger a save when markers change
+
+                    // Get the card wrapper (parent of the image)
+                    const wrapper = this.closest('.tracking-card-wrapper');
+                    if (wrapper) {
+                        createMarkers(wrapper, cardData.markedFields);
+
+                        // Direct save to Firebase
+                        if (window.auth && window.auth.currentUser) {
+                            console.log("Marker toggled, saving to Firebase");
+                            window.saveUserCards(window.auth.currentUser.uid);
+                        }
+                    }
                 }
             });
 
-            // Append elements to the card container
+            // Append elements in proper order
+            trackingCardWrapper.appendChild(trackingCard);
+            trackingCardWrapper.appendChild(tagInput);
+
+            // Create and bind remove button
+            const actionsDiv = document.createElement('div');
+            actionsDiv.className = 'card-actions';
+            const removeButton = document.createElement('button');
+            removeButton.textContent = "Remove";
+            removeButton.className = "remove-button";
+            removeButton.onclick = function (e) {
+                e.stopPropagation(); // Stop event bubbling
+                removeCardDirect(this); // 'this' refers to the button
+            };
+            actionsDiv.appendChild(removeButton);
+
             cardWrapper.appendChild(trackingCardWrapper);
             cardWrapper.appendChild(actionsDiv);
             cardsContainer.appendChild(cardWrapper);
 
-            // Draw initial markers
+            // Render markers based on cardData.markedFields
             createMarkers(trackingCardWrapper, cardData.markedFields);
 
-            // Update the side menu list
-            updateCardsList();
-
-            console.log("Card created with ID:", cardId);
-            return cardId;
-        }
-
-
-        // Modify the createMarkers function to ensure proper event handling
-        function createMarkers(cardWrapper, markedFields) {
-            // Remove previous markers
-            cardWrapper.querySelectorAll('.field-marker').forEach(marker => marker.remove());
-
-            // Get the card image for reference (not needed for positioning)
-            const cardImage = cardWrapper.querySelector('.tracking-card');
-
-            // Get card ID - needed to update the right card in the array
-            const cardId = cardImage ? cardImage.dataset.cardId : null;
-            if (!cardId) {
-                console.error("Cannot create markers: Card ID not found");
-                return;
-            }
-
-            // Find the card data in our array
-            const cardData = cards.find(card => String(card.id) === String(cardId));
-            if (!cardData) {
-                console.error("Cannot create markers: Card data not found for ID", cardId);
-                return;
-            }
-
-            // Add markers at allowed positions where they are toggled on
-            markedFields.forEach((isMarked, index) => {
-                if (isMarked) {
-                    const markerElement = document.createElement('div');
-                    markerElement.className = 'field-marker';
-
-                    // Position using percentages
-                    markerElement.style.left = `${allowedMarkerPositions[index].xPercent}%`;
-                    markerElement.style.top = `${allowedMarkerPositions[index].yPercent}%`;
-
-                    // Add data attributes for debugging
-                    markerElement.dataset.index = index;
-                    markerElement.dataset.cardId = cardId;
-
-                    // Click to remove marker - use addEventListener instead of onclick
-                    markerElement.addEventListener('click', function(event) {
-                        event.stopPropagation(); // Prevent event bubbling
-
-                        // Update the card data in the array
-                        cardData.markedFields[index] = false;
-
-                        // Recreate markers
-                        createMarkers(cardWrapper, cardData.markedFields);
-
-                        // Save changes if logged in
-                        if (auth.currentUser) {
-                            debouncedSaveUserCards();
-                        }
-
-                        console.log(`Removed marker ${index} from card ${cardId}`);
-                    });
-
-                    cardWrapper.appendChild(markerElement);
+            // Also update the side menu for each card
+            const listItem = document.createElement('li');
+            listItem.className = 'menu-item';
+            listItem.textContent = cardData.tagName || 'Unnamed Card';
+            listItem.dataset.cardId = cardData.id;
+            listItem.addEventListener('click', () => {
+                const targetCard = document.querySelector(`.card-container[data-card-id="${cardData.id}"]`);
+                if (targetCard) {
+                    targetCard.scrollIntoView({behavior: 'smooth', block: 'center'});
+                    targetCard.style.outline = '2px solid var(--primary-color)';
+                    setTimeout(() => {
+                        targetCard.style.outline = 'none';
+                    }, 1500);
                 }
+                closeMenu();
             });
-        }
-        // Replace your existing removeCard function with this one
-        function removeCard(cardId) {
-            console.log("Remove called for cardId:", cardId);
+            cardsList.appendChild(listItem);
+        });
+    };
 
-            // Convert to the same type (string) for comparison
-            const stringCardId = String(cardId);
+    // Event listeners
+    addCardButton.addEventListener('click', createCard);
 
-            // Find the card in our array
-            const index = cards.findIndex(card => String(card.id) === stringCardId);
-
-            if (index !== -1) {
-                // Remove from our array
-                cards.splice(index, 1);
-
-                // Re-render the UI
-                renderCards();
-
-                // First remove from the DOM directly
-                const cardElement = document.querySelector(`.card-container[data-card-id="${stringCardId}"]`);
-                if (cardElement) {
-                    cardElement.remove();
-                }
-
-                // Then try to save to Firebase if logged in
-                if (auth.currentUser) {
-                    try {
-                        saveUserCards(auth.currentUser.uid);
-                        console.log("Card removed and saved to Firebase");
-                    } catch (err) {
-                        console.error("Failed to save to Firebase:", err);
-                    }
-                } else {
-                    console.log("Card removed locally (user not logged in)");
-                }
-            } else {
-                console.error("Card not found in array:", stringCardId);
-            }
-        }
-
-        // Add this function to your JavaScript
-        function removeCardDirect(element) {
-            // Get the card container
-            const cardContainer = element.closest('.card-container');
-            if (!cardContainer) return;
-
-            // Get the card ID
-            const cardId = cardContainer.dataset.cardId;
-            console.log("Direct remove for card ID:", cardId);
-
-            // Remove from DOM
-            cardContainer.remove();
-
-            // Remove from array
-            const index = cards.findIndex(card => String(card.id) === String(cardId));
-            if (index !== -1) {
-                cards.splice(index, 1);
-                console.log("Card removed from array");
-
-                // Update menu
-                updateCardsList();
-
-                // Save to Firebase if logged in
-                if (auth.currentUser) {
-                    try {
-                        saveUserCards(auth.currentUser.uid);
-                        console.log("Changes saved to Firebase");
-                    } catch (err) {
-                        console.error("Error saving to Firebase:", err);
-                    }
-                }
-            }
-        }
-
-
-        addCardButton.addEventListener('click', createCard);
-
-        // Add the first card on page load
+    // Add the first card on page load (only if no cards exist)
+    if (cards.length === 0) {
         createCard();
-    </script>
-    <button id="loginBtn">Sign in with Google</button>
-    <button id="logoutBtn">Sign Out</button>
-    <p id="userName"></p>
+    }
+</script>
 </body>
-
 </html>

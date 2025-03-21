@@ -1,0 +1,222 @@
+:root {
+    --primary-color: #3b82f6;
+    --danger-color: #ef4444;
+    --bg-color: #f3f4f6;
+    --card-bg: #ffffff;
+    --text-color: #1f2937;
+    --shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.1), 0 2px 4px -1px rgba(0, 0, 0, 0.06);
+}
+
+body {
+    margin: 0;
+    padding: 20px;
+    font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+    background-color: var(--bg-color);
+    color: var(--text-color);
+}
+
+.container {
+    max-width: 1200px;
+    margin: 0 auto;
+    padding: 0 16px;
+}
+
+header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    margin-bottom: 24px;
+}
+
+h1 {
+    margin: 0;
+    font-size: 1.75rem;
+}
+
+.card-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fill, minmax(300px, 1fr));
+    gap: 24px;
+}
+
+.card-container {
+    position: relative;
+    border: 1px solid #e5e7eb;
+    padding: 16px;
+    background: var(--card-bg);
+    border-radius: 8px;
+    box-shadow: var(--shadow);
+    transition: transform 0.2s, box-shadow 0.2s;
+}
+
+.card-container:hover {
+    transform: translateY(-2px);
+    box-shadow: 0 10px 15px -3px rgba(0, 0, 0, 0.1), 0 4px 6px -2px rgba(0, 0, 0, 0.05);
+}
+
+.tracking-card-wrapper {
+    position: relative;
+    width: 100%;
+}
+
+.tracking-card {
+    display: block;
+    width: 100%;
+    height: auto;
+}
+
+.field-marker {
+    position: absolute;
+    width: 12px;
+    height: 12px;
+    background-color: rgba(166, 81, 55, 1);
+    border-radius: 50%;
+    opacity: 0.9;
+    transform: translate(-50%, -50%);
+    cursor: pointer;
+    transition: transform 0.1s, background-color 0.2s;
+}
+
+.field-marker:hover {
+    transform: translate(-50%, -50%) scale(1.2);
+    background-color: rgba(166, 81, 55, 1);
+}
+
+.tag-input {
+    width: 80%;
+    margin-top: 12px;
+    background: var(--card-bg);
+    border: 1px solid #e5e7eb;
+    border-radius: 4px;
+    font-size: 16px;
+    padding: 8px 12px;
+    transition: border-color 0.2s;
+}
+
+.tag-input:focus {
+    outline: none;
+    border-color: var(--primary-color);
+    box-shadow: 0 0 0 3px rgba(59, 130, 246, 0.2);
+}
+
+.card-actions {
+    display: flex;
+    justify-content: flex-end;
+    margin-top: 12px;
+}
+
+button {
+    border: none;
+    padding: 8px 16px;
+    cursor: pointer;
+    border-radius: 4px;
+    font-weight: 500;
+    transition: background-color 0.2s, transform 0.1s;
+}
+
+button:active {
+    transform: translateY(1px);
+}
+
+.remove-button {
+    background-color: var(--danger-color);
+    color: white;
+}
+
+.remove-button:hover {
+    background-color: #dc2626;
+}
+
+.add-button {
+    background-color: var(--primary-color);
+    color: white;
+    display: flex;
+    align-items: center;
+    gap: 8px;
+}
+
+.add-button:hover {
+    background-color: #2563eb;
+}
+
+.add-button svg {
+    width: 16px;
+    height: 16px;
+}
+
+/* Sidebar menu */
+.menu-container {
+    position: fixed;
+    top: 0;
+    left: -300px;
+    width: 300px;
+    height: 100%;
+    background-color: var(--card-bg);
+    box-shadow: var(--shadow);
+    transition: left 0.3s ease;
+    z-index: 1000;
+    overflow-y: auto;
+}
+
+.menu-container.open {
+    left: 0;
+}
+
+.menu-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    padding: 16px;
+    border-bottom: 1px solid #e5e7eb;
+}
+
+.menu-list {
+    list-style: none;
+    padding: 0;
+    margin: 0;
+}
+
+.menu-item {
+    padding: 12px 16px;
+    border-bottom: 1px solid #f3f4f6;
+    cursor: pointer;
+    transition: background-color 0.2s;
+}
+
+.menu-item:hover {
+    background-color: #f9fafb;
+}
+
+.menu-toggle {
+    background: none;
+    border: none;
+    cursor: pointer;
+    display: flex;
+    flex-direction: column;
+    gap: 5px;
+    padding: 8px;
+}
+
+.menu-toggle span {
+    display: block;
+    width: 24px;
+    height: 3px;
+    background-color: var(--text-color);
+    border-radius: 3px;
+    transition: transform 0.2s;
+}
+
+.backdrop {
+    position: fixed;
+    top: 0;
+    left: 0;
+    width: 100%;
+    height: 100%;
+    background-color: rgba(0, 0, 0, 0.5);
+    z-index: 999;
+    display: none;
+}
+
+.backdrop.open {
+    display: block;
+}
